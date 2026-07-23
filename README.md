@@ -80,6 +80,20 @@ l'instant — ce fichier est la source de vérité. Le dossier `data/` est
 protégé par un `.htaccess` pour empêcher son accès direct depuis un
 navigateur.
 
+## Page « Liens »
+
+`liens.html` est une page annuaire qui centralise tous les raccourcis Coin Coin
+(Drive, Upload, page Publi, page Jeu, page Dépliant, page Muscu, page RDV,
+GitHub). Elle reprend le même style visuel que la page d'accueil et un lien
+croisé existe entre les deux pages (bouton « 🔗 Liens » / « 🦆 Validation
+hebdo » en haut à droite).
+
+Les liens sont définis dans `liens.js`, dans le tableau `LINKS` en haut du
+fichier. Pour ajouter ou corriger une URL, il suffit de renseigner le champ
+`url` de l'entrée correspondante (une chaîne vide affiche la carte comme
+« Lien à ajouter »). Aucune base de données ni fichier `data/` n'est requis
+pour cette page.
+
 ## Roadmap (publication automatique)
 
 Une fois les accès créés côté Meta et TikTok, l'automatisation complète
