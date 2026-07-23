@@ -29,17 +29,17 @@ function updateProgress() {
 }
 
 async function fetchPosts() {
-  const res = await fetch('/api/posts');
+  const res = await fetch('api.php?action=posts');
   state = await res.json();
   weekLabel.textContent = formatWeek(state.weekOf);
   render();
 }
 
 async function updatePost(id, patch) {
-  const res = await fetch(`/api/posts/${id}`, {
-    method: 'PUT',
+  const res = await fetch('api.php?action=update-post', {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(patch),
+    body: JSON.stringify({ id, ...patch }),
   });
   if (!res.ok) {
     showToast('Erreur de sauvegarde');
@@ -124,7 +124,7 @@ function renderCard(post) {
     });
   });
 
-  card.querySelector('.copy-btn').addEventListener('click', async (e) => {
+  card.querySelector('.copy-btn').addEventListener('click', async () => {
     const textarea = card.querySelector('.caption-box');
     await navigator.clipboard.writeText(textarea.value);
     showToast('Texte copié !');
@@ -168,7 +168,7 @@ notifyBtn.addEventListener('click', async () => {
 
   notifyBtn.disabled = true;
   try {
-    const res = await fetch('/api/notify-slack', {
+    const res = await fetch('api.php?action=notify-slack', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
