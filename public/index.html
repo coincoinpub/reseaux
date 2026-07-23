@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Coin Coin Réseaux — Validation hebdo</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">🦆</span>
+    <div>
+      <h1>Coin Coin Réseaux</h1>
+      <p id="week-label" class="subtitle">Chargement de la semaine…</p>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <span id="progress-label" class="progress-label"></span>
+    <button id="notify-slack" class="btn btn-outline">Envoyer le résumé sur Slack</button>
+  </div>
+</header>
+
+<main>
+  <p class="intro">
+    Les 4 visuels de la routine hebdo (dossier Canva <strong>« Visuel (Hebdo) »</strong>).
+    Relis le texte, ajuste les plateformes, puis valide ou refuse chaque post.
+    Une fois validé : télécharge le visuel dans Canva et copie le texte pour publier.
+  </p>
+
+  <div id="posts" class="posts-grid">
+    <!-- rempli en JS -->
+  </div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

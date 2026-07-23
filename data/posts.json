@@ -1,0 +1,77 @@
+{
+  "weekOf": "2026-07-17",
+  "posts": [
+    {
+      "id": "DAHPorGKYF8",
+      "title": "Promo Flyers",
+      "category": "Communication générale",
+      "captionDraft": "📣 Envie de flyers qui claquent, livrés directement chez vous ? Coin Coin Publicité vous propose des flyers pro à petit prix, dès 200 exemplaires. Contactez-nous pour votre devis ! 🦆\n\n#CoinCoinPub #Flyers #Communication",
+      "caption": "📣 Envie de flyers qui claquent, livrés directement chez vous ? Coin Coin Publicité vous propose des flyers pro à petit prix, dès 200 exemplaires. Contactez-nous pour votre devis ! 🦆\n\n#CoinCoinPub #Flyers #Communication",
+      "platforms": {
+        "facebook": true,
+        "instagram": true,
+        "tiktok": false
+      },
+      "status": "pending",
+      "note": "",
+      "canvaViewUrl": "https://www.canva.com/d/Dvk2DT9U0werORJ",
+      "canvaEditUrl": "https://www.canva.com/d/tcR04AysnZAQPPP",
+      "thumbnailUrl": "https://design.canva.ai/KFaH2OUd5_lDv-y",
+      "updatedAt": null
+    },
+    {
+      "id": "DAHPojedD9o",
+      "title": "Image de marque",
+      "category": "Communication générale",
+      "captionDraft": "✨ Donner le ton à votre image, c'est notre métier. Coin Coin Publicité vous accompagne pour construire une identité qui vous ressemble.\n\n#ImageDeMarque #Branding #CoinCoinPub",
+      "caption": "✨ Donner le ton à votre image, c'est notre métier. Coin Coin Publicité vous accompagne pour construire une identité qui vous ressemble.\n\n#ImageDeMarque #Branding #CoinCoinPub",
+      "platforms": {
+        "facebook": true,
+        "instagram": true,
+        "tiktok": false
+      },
+      "status": "pending",
+      "note": "",
+      "canvaViewUrl": "https://www.canva.com/d/k46WAWXzAEmGo-B",
+      "canvaEditUrl": "https://www.canva.com/d/hPqYf8nvn3Xg1fd",
+      "thumbnailUrl": "https://design.canva.ai/LEZeOX8tfZ4EMda",
+      "updatedAt": null
+    },
+    {
+      "id": "DAHPonNMZZ4",
+      "title": "Job récent — Maison Chollet",
+      "category": "Réalisation client",
+      "captionDraft": "🪟 Une vitrine bien pensée vend toute seule ! Découvrez notre dernière réalisation pour Maison Chollet. Vous aussi, donnez envie d'entrer.\n\n#Réalisation #Vitrine #CoinCoinPub",
+      "caption": "🪟 Une vitrine bien pensée vend toute seule ! Découvrez notre dernière réalisation pour Maison Chollet. Vous aussi, donnez envie d'entrer.\n\n#Réalisation #Vitrine #CoinCoinPub",
+      "platforms": {
+        "facebook": true,
+        "instagram": true,
+        "tiktok": false
+      },
+      "status": "pending",
+      "note": "",
+      "canvaViewUrl": "https://www.canva.com/d/BiQMgc3bHFsug9W",
+      "canvaEditUrl": "https://www.canva.com/d/c3nxQCbu7OTThOr",
+      "thumbnailUrl": "https://design.canva.ai/w49hgvFvS8ZII89",
+      "updatedAt": null
+    },
+    {
+      "id": "DAHPokIn-5s",
+      "title": "Actu IA/design — Figma Weave",
+      "category": "Actu IA / design",
+      "captionDraft": "🤖 Notre sélection info IA spécial Figma Weave ! On décrypte pour vous les dernières nouveautés design/IA du moment.\n\n#ActuIA #Figma #Design #CoinCoinPub",
+      "caption": "🤖 Notre sélection info IA spécial Figma Weave ! On décrypte pour vous les dernières nouveautés design/IA du moment.\n\n#ActuIA #Figma #Design #CoinCoinPub",
+      "platforms": {
+        "facebook": true,
+        "instagram": true,
+        "tiktok": false
+      },
+      "status": "pending",
+      "note": "",
+      "canvaViewUrl": "https://www.canva.com/d/27qHntwx1AN0tyg",
+      "canvaEditUrl": "https://www.canva.com/d/_nFFm3TOctSkO6P",
+      "thumbnailUrl": "https://design.canva.ai/0ZIu-rXTW1VIMU_",
+      "updatedAt": null
+    }
+  ]
+}
