@@ -1,0 +1,220 @@
+<?php
+// Endpoint appelé par Slack (Events API) à chaque nouveau message dans
+// #visuels-hebdo. Voir README.md pour la configuration côté Slack.
+
+$configFile = __DIR__ . '/config.php';
+$config = file_exists($configFile) ? require $configFile : [];
+$signingSecret = $config['slack_signing_secret'] ?? '';
+$sourceChannel = $config['slack_source_channel_id'] ?? '';
+$dataFile = __DIR__ . '/data/posts.json';
+
+$rawBody = file_get_contents('php://input');
+
+if ($signingSecret) {
+    $timestamp = $_SERVER['HTTP_X_SLACK_REQUEST_TIMESTAMP'] ?? '';
+    $slackSignature = $_SERVER['HTTP_X_SLACK_SIGNATURE'] ?? '';
+    if (!$timestamp || abs(time() - (int) $timestamp) > 300) {
+        http_response_code(400);
+        exit('Requête expirée');
+    }
+    $expected = 'v0=' . hash_hmac('sha256', "v0:{$timestamp}:{$rawBody}", $signingSecret);
+    if (!hash_equals($expected, $slackSignature)) {
+        http_response_code(401);
+        exit('Signature invalide');
+    }
+}
+
+$payload = json_decode($rawBody, true) ?: [];
+
+// Étape de vérification demandée par Slack à la configuration de l'URL.
+if (($payload['type'] ?? '') === 'url_verification') {
+    header('Content-Type: text/plain');
+    echo $payload['challenge'] ?? '';
+    exit;
+}
+
+// On répond tout de suite à Slack (il attend une réponse sous 3s), puis on
+// continue le traitement (y compris les appels réseau vers Canva, plus lents)
+// après avoir libéré la connexion, si le serveur le permet.
+http_response_code(200);
+header('Content-Type: text/plain');
+echo 'ok';
+if (function_exists('fastcgi_finish_request')) {
+    fastcgi_finish_request();
+}
+
+if (($payload['type'] ?? '') !== 'event_callback') {
+    exit;
+}
+
+$event = $payload['event'] ?? [];
+$isPlainMessage = ($event['type'] ?? '') === 'message'
+    && empty($event['subtype'])
+    && empty($event['bot_id'])
+    && empty($event['thread_ts']); // ignore les réponses en fil de discussion
+
+if (!$isPlainMessage) {
+    exit;
+}
+if ($sourceChannel && ($event['channel'] ?? '') !== $sourceChannel) {
+    exit;
+}
+
+$text = $event['text'] ?? '';
+$parsedPosts = parse_weekly_message($text);
+
+if (empty($parsedPosts)) {
+    exit;
+}
+
+foreach ($parsedPosts as &$p) {
+    $p['thumbnailUrl'] = fetch_og_image($p['link']) ?? '';
+}
+unset($p);
+
+save_new_week($dataFile, $parsedPosts);
+exit;
+
+// ---------------------------------------------------------------------
+
+function slack_unescape($text) {
+    return str_replace(['&amp;', '&lt;', '&gt;'], ['&', '<', '>'], $text);
+}
+
+function clean_caption_text($text) {
+    $text = preg_replace_callback('/<([^|>]+)\|([^>]+)>/', fn($m) => $m[2], $text);
+    $text = preg_replace_callback('/<([^>]+)>/', fn($m) => $m[1], $text);
+    $text = preg_replace('/^>\s?/m', '', $text);
+    $text = preg_replace('/[*_`]/', '', $text);
+    $text = preg_replace('/^\s*(Lien|Titre|Texte)\s*:?\s*/im', '', $text);
+    $text = preg_replace('/\n{3,}/', "\n\n", $text);
+    return trim($text);
+}
+
+function extract_canva_links($text) {
+    preg_match_all('/<(https:\/\/(?:www\.)?canva\.com\/d\/[A-Za-z0-9_-]+)(?:\|[^>]*)?>/', $text, $m);
+    return $m[1];
+}
+
+// Découpe le message hebdo en posts individuels. Tolérant aux variations de
+// mise en forme (le message est rédigé à la main chaque semaine) : ignore
+// tout ce qui suit la partie "bonus / vidéo / sources", ne garde que les
+// blocs numérotés contenant un lien Canva.
+function parse_weekly_message($rawText) {
+    $text = slack_unescape($rawText);
+
+    $stopMarkers = [
+        '/\n\s*[_*]*Bonus/i',
+        '/\n\s*[_*]*Texte\s*\+\s*prompt/i',
+        '/\n\s*[_*]*Script\s*\(/i',
+        '/\n\s*[_*]*Prompt\s*g[ée]n[ée]ration/i',
+        '/\n\s*Dossier complet/i',
+        '/\n\s*Sources\s+actu/i',
+        '/\n\s*_?Sent using_?/i',
+        '/\n\s*Point de vigilance/i',
+    ];
+    foreach ($stopMarkers as $re) {
+        if (preg_match($re, $text, $m, PREG_OFFSET_CAPTURE)) {
+            $text = substr($text, 0, $m[0][1]);
+        }
+    }
+
+    $parts = preg_split('/\n(?=[_*\s]{0,3}\d+\.\s)/', $text);
+    $posts = [];
+
+    foreach ($parts as $part) {
+        if (!preg_match('/^[_*\s]{0,3}(\d+)\.\s*(.*)$/s', trim($part), $m)) {
+            continue;
+        }
+        $num = (int) $m[1];
+        $rest = $m[2];
+
+        $links = extract_canva_links($rest);
+        if (empty($links)) {
+            continue;
+        }
+        $link = $links[0];
+
+        $markerPos = mb_strpos($rest, '<' . $link);
+        $newlinePos = mb_strpos($rest, "\n");
+        $headingEnd = $markerPos !== false ? $markerPos : $newlinePos;
+
+        $heading = $headingEnd !== false ? mb_substr($rest, 0, $headingEnd) : $rest;
+        $heading = trim(clean_caption_text($heading), " \t\n\r\0\x0B-—:*_");
+
+        $body = $headingEnd !== false ? mb_substr($rest, $headingEnd) : '';
+        // le lien Canva est déjà affiché séparément (bouton de téléchargement) :
+        // on l'enlève du texte plutôt que de le convertir en libellé résiduel.
+        $body = preg_replace('/<https:\/\/(?:www\.)?canva\.com\/d\/[A-Za-z0-9_-]+(?:\|[^>]*)?>/', '', $body);
+        $body = clean_caption_text($body);
+
+        $category = '';
+        $title = $heading;
+        if (preg_match('/^(.*?)\s*[-—:]\s*(.+)$/u', $heading, $hm)) {
+            $category = trim($hm[1]);
+            $title = trim($hm[2]);
+        }
+
+        $posts[$num] = [
+            'title' => $title !== '' ? $title : "Post $num",
+            'category' => $category,
+            'caption' => $body !== '' ? $body : $title,
+            'link' => $link,
+        ];
+    }
+
+    ksort($posts);
+    return array_values($posts);
+}
+
+function fetch_og_image($url) {
+    if (!function_exists('curl_init')) {
+        return null;
+    }
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 4,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 3,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; CoinCoinReseauxBot/1.0)',
+    ]);
+    $html = curl_exec($ch);
+    curl_close($ch);
+    if (!$html) {
+        return null;
+    }
+    if (preg_match('/<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']/i', $html, $m)) {
+        return $m[1];
+    }
+    if (preg_match('/<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']/i', $html, $m)) {
+        return $m[1];
+    }
+    return null;
+}
+
+function save_new_week($dataFile, $parsedPosts) {
+    $posts = [];
+    $i = 1;
+    foreach ($parsedPosts as $p) {
+        $posts[] = [
+            'id' => 'W' . date('Ymd') . '-' . $i,
+            'title' => $p['title'],
+            'category' => $p['category'] ?: 'À catégoriser',
+            'captionDraft' => $p['caption'],
+            'caption' => $p['caption'],
+            'platforms' => ['facebook' => true, 'instagram' => true, 'tiktok' => false],
+            'status' => 'pending',
+            'note' => '',
+            'canvaViewUrl' => $p['link'],
+            'canvaEditUrl' => $p['link'],
+            'thumbnailUrl' => $p['thumbnailUrl'] ?? '',
+            'updatedAt' => null,
+        ];
+        $i++;
+    }
+
+    $data = ['weekOf' => date('Y-m-d'), 'posts' => $posts];
+    file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}

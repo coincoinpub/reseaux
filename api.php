@@ -40,6 +40,12 @@ if ($action === 'update-post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($data['posts'] as &$post) {
         if ($post['id'] === $id) {
             $found = true;
+            if (isset($body['title']) && is_string($body['title'])) {
+                $post['title'] = $body['title'];
+            }
+            if (isset($body['category']) && is_string($body['category'])) {
+                $post['category'] = $body['category'];
+            }
             if (isset($body['caption']) && is_string($body['caption'])) {
                 $post['caption'] = $body['caption'];
             }

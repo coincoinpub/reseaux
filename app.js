@@ -60,24 +60,36 @@ function debounce(fn, delay) {
   };
 }
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
 function renderCard(post) {
   const card = document.createElement('article');
   card.className = 'card';
   card.dataset.id = post.id;
 
+  const mediaBlock = post.thumbnailUrl
+    ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="Visuel : ${escapeHtml(post.title)}" loading="lazy" />`
+    : '';
+
   card.innerHTML = `
-    <div class="card-media">
-      <img src="${post.thumbnailUrl}" alt="Visuel : ${post.title}" loading="lazy" />
+    <div class="card-media${post.thumbnailUrl ? '' : ' broken'}">
+      ${mediaBlock}
       <div class="media-fallback">
         <span>🖼️ Aperçu indisponible</span>
         <span>(le lien Canva reste valable)</span>
       </div>
     </div>
     <div class="card-body">
-      <span class="category-badge">${post.category}</span>
-      <h2 class="card-title">${post.title}</h2>
+      <div class="title-row">
+        <input class="category-input" data-field="category" value="${escapeHtml(post.category)}" placeholder="Catégorie" />
+      </div>
+      <input class="title-input" data-field="title" value="${escapeHtml(post.title)}" placeholder="Titre du post" />
 
-      <textarea class="caption-box" data-field="caption">${post.caption}</textarea>
+      <textarea class="caption-box" data-field="caption">${escapeHtml(post.caption)}</textarea>
 
       <div class="platforms">
         ${Object.entries(PLATFORM_LABELS)
@@ -91,10 +103,10 @@ function renderCard(post) {
           .join('')}
       </div>
 
-      <input class="note-box" type="text" data-field="note" placeholder="Note interne (optionnel)" value="${post.note || ''}" />
+      <input class="note-box" type="text" data-field="note" placeholder="Note interne (optionnel)" value="${escapeHtml(post.note || '')}" />
 
       <div class="actions-row">
-        <a class="btn" href="${post.canvaViewUrl}" target="_blank" rel="noopener">⬇️ Télécharger le visuel (Canva)</a>
+        <a class="btn" href="${escapeHtml(post.canvaViewUrl)}" target="_blank" rel="noopener">⬇️ Télécharger le visuel (Canva)</a>
         <button class="btn copy-btn">📋 Copier le texte</button>
       </div>
 
@@ -110,7 +122,13 @@ function renderCard(post) {
 
   const media = card.querySelector('.card-media');
   const img = media.querySelector('img');
-  img.addEventListener('error', () => media.classList.add('broken'));
+  if (img) img.addEventListener('error', () => media.classList.add('broken'));
+
+  const saveTitle = debounce((value) => updatePost(post.id, { title: value }), 600);
+  card.querySelector('.title-input').addEventListener('input', (e) => saveTitle(e.target.value));
+
+  const saveCategory = debounce((value) => updatePost(post.id, { category: value }), 600);
+  card.querySelector('.category-input').addEventListener('input', (e) => saveCategory(e.target.value));
 
   const saveCaption = debounce((value) => updatePost(post.id, { caption: value }), 600);
   card.querySelector('.caption-box').addEventListener('input', (e) => saveCaption(e.target.value));
