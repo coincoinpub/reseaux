@@ -73,17 +73,11 @@ function renderCard(post) {
   card.dataset.id = post.id;
 
   const mediaBlock = post.thumbnailUrl
-    ? `<img src="${escapeHtml(post.thumbnailUrl)}" alt="Visuel : ${escapeHtml(post.title)}" loading="lazy" />`
+    ? `<div class="card-media"><img src="${escapeHtml(post.thumbnailUrl)}" alt="Visuel : ${escapeHtml(post.title)}" loading="lazy" /></div>`
     : '';
 
   card.innerHTML = `
-    <div class="card-media${post.thumbnailUrl ? '' : ' broken'}">
-      ${mediaBlock}
-      <div class="media-fallback">
-        <span>🖼️ Aperçu indisponible</span>
-        <span>(le lien Canva reste valable)</span>
-      </div>
-    </div>
+    ${mediaBlock}
     <div class="card-body">
       <div class="title-row">
         <input class="category-input" data-field="category" value="${escapeHtml(post.category)}" placeholder="Catégorie" />
@@ -122,8 +116,9 @@ function renderCard(post) {
   `;
 
   const media = card.querySelector('.card-media');
-  const img = media.querySelector('img');
-  if (img) img.addEventListener('error', () => media.classList.add('broken'));
+  const img = media ? media.querySelector('img') : null;
+  // Lien Canva expiré : on retire la carte média plutôt que d'afficher une icône cassée.
+  if (img) img.addEventListener('error', () => media.remove());
 
   const saveTitle = debounce((value) => updatePost(post.id, { title: value }), 600);
   card.querySelector('.title-input').addEventListener('input', (e) => saveTitle(e.target.value));

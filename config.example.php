@@ -9,11 +9,22 @@ return [
     // > Ajouter une configuration de webhook > choisir #all-coin-coin
     'slack_webhook_url' => '',
 
-    // Pour RECEVOIR automatiquement les nouveaux posts hebdo depuis #visuels-hebdo :
-    // Slack > api.slack.com/apps > ton app > Basic Information > Signing Secret
-    'slack_signing_secret' => '',
+    // --- Actualisation automatique depuis #visuels-hebdo (voir README) ---
+
+    // Méthode recommandée (sync-slack.php + Cron Job Hostinger) :
+    // Slack > api.slack.com/apps > ton app > OAuth & Permissions
+    // > Bot User OAuth Token (commence par "xoxb-")
+    'slack_bot_token' => '',
+
+    // Mot de passe au choix (invente une suite de caractères), à remettre
+    // dans l'URL du Cron Job Hostinger : sync-slack.php?key=CE_MOT_DE_PASSE
+    'cron_secret' => '',
 
     // ID du canal à écouter (#visuels-hebdo). Déjà rempli, à changer seulement
     // si tu recrées le canal.
     'slack_source_channel_id' => 'C0BDUKC15E3',
+
+    // Méthode avancée uniquement (slack-events.php, webhook temps réel) :
+    // Slack > api.slack.com/apps > ton app > Basic Information > Signing Secret
+    'slack_signing_secret' => '',
 ];

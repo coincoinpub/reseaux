@@ -37,7 +37,8 @@ Hostinger classique, comme un site normal.
 2. Crée un dossier `publi`.
 3. Mets-y tous les fichiers de ce dépôt **sauf** `README.md`, `.gitignore` et
    `config.example.php`, c'est-à-dire :
-   - `index.html`, `style.css`, `app.js`, `api.php`, `slack-events.php`
+   - `index.html`, `style.css`, `app.js`, `logo.svg`
+   - `api.php`, `slack-parser.php`, `sync-slack.php`, `slack-events.php`
    - le dossier `data/` (avec `posts.json` et `.htaccess`)
 4. Duplique `config.example.php`, renomme la copie en `config.php`, et
    colle-la aussi dans le dossier `publi` (voir les étapes Slack ci-dessous
@@ -51,44 +52,72 @@ Gestionnaire de fichiers, clic droit sur le fichier → Permissions → cocher
 
 ## Actualisation automatique depuis Slack (#visuels-hebdo)
 
-Dès qu'un nouveau message est posté dans **#visuels-hebdo**, la page se met
-à jour toute seule avec les nouveaux posts (titre, catégorie, texte, lien
-Canva). Ça marche même sans les liens exacts au bon endroit : le texte du
-message est analysé automatiquement, et tout reste modifiable ensuite sur la
-page si le découpage n'est pas parfait.
+La page peut aller chercher elle-même le dernier message de
+**#visuels-hebdo** à intervalle régulier (par exemple une fois par jour), et
+se mettre à jour automatiquement avec les nouveaux posts (titre, catégorie,
+texte, lien Canva) — sans que tu aies rien à faire manuellement une fois que
+c'est en place. Ça marche même si le texte n'est pas parfaitement structuré :
+il est analysé automatiquement, et tout reste modifiable ensuite sur la page.
 
-Pour l'activer, il faut créer une app Slack (une seule fois) :
+C'est totalement sans risque de le faire tourner souvent (tous les jours, par
+exemple, pour ne pas dépendre du jour exact où le message hebdo est posté) :
+s'il n'y a pas de nouveau message depuis la dernière fois, rien ne bouge sur
+la page — les validations déjà faites sont préservées.
+
+Deux étapes : créer un accès Slack (une seule fois), puis programmer un Cron
+Job Hostinger.
+
+### 1. Créer l'accès Slack (lecture seule)
 
 1. Va sur [api.slack.com/apps](https://api.slack.com/apps) → **Create New App**
    → **From scratch**. Nomme-la par exemple « Coin Coin Réseaux Sync » et
    choisis l'espace de travail Coin Coin.
-2. Dans **Basic Information**, copie le **Signing Secret**, colle-le dans
-   `config.php` :
+2. Dans le menu de gauche, **OAuth & Permissions** → descends jusqu'à **Scopes**
+   → **Bot Token Scopes** → **Add an OAuth Scope**, ajoute :
+   - `channels:history`
+   - `channels:read`
+3. Toujours sur cette page, clique **Install to Workspace** en haut, puis
+   **Autoriser**.
+4. Une fois installée, copie le **Bot User OAuth Token** (commence par `xoxb-`)
+   et colle-le dans `config.php` :
    ```php
-   'slack_signing_secret' => 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   'slack_bot_token' => 'xoxb-xxxxxxxxxxxxx',
    ```
-3. Dans **Event Subscriptions**, active **Enable Events**. Dans **Request
-   URL**, mets :
+5. Invente un mot de passe (n'importe quelle suite de caractères) et mets-le
+   dans `config.php` aussi :
+   ```php
+   'cron_secret' => 'un-mot-de-passe-au-choix',
    ```
-   https://coin-coin.fr/publi/slack-events.php
-   ```
-   Slack vérifie l'URL automatiquement (un ✓ vert doit apparaître) — assure-toi
-   que `config.php` avec le signing secret est déjà en ligne avant cette étape.
-4. Toujours dans **Event Subscriptions**, dépli **Subscribe to bot events** et
-   ajoute `message.channels`. Sauvegarde.
-5. Dans **OAuth & Permissions**, ajoute le scope `channels:history` (et
-   `channels:read`), puis clique **Install to Workspace** en haut de la page.
 6. Dans Slack, va dans le canal **#visuels-hebdo** et tape `/invite
-   @Coin Coin Réseaux Sync` (ou le nom donné à l'app) pour l'ajouter au canal.
-7. Poste un message de test dans #visuels-hebdo (ou attend le prochain message
-   hebdo) et vérifie que `coin-coin.fr/publi` s'est mis à jour.
+   @Coin Coin Réseaux Sync` (ou le nom donné à l'app) pour l'ajouter au canal
+   — sinon elle ne peut pas lire les messages.
 
 `slack_source_channel_id` dans `config.php` est déjà pré-rempli avec l'ID du
-canal #visuels-hebdo — à changer seulement si le canal est un jour recréé.
+canal #visuels-hebdo.
 
-**Note :** poster un nouveau message dans #visuels-hebdo remplace entièrement
-la semaine affichée sur la page (utile pour republier une version corrigée) —
-les validations déjà faites sur l'ancienne semaine sont alors réinitialisées.
+### 2. Programmer le Cron Job sur Hostinger
+
+1. Dans **hPanel → Avancé → Cron Jobs**, clique **Créer un nouveau Cron Job**.
+2. Fréquence : par exemple **une fois par jour**.
+3. Commande / URL à appeler :
+   ```
+   https://coin-coin.fr/publi/sync-slack.php?key=un-mot-de-passe-au-choix
+   ```
+   (le même mot de passe que `cron_secret` dans `config.php`)
+4. Enregistre.
+
+C'est tout — à partir de maintenant, la page se met à jour toute seule.
+Pour vérifier que ça fonctionne sans attendre le cron, tu peux copier-coller
+cette URL directement dans un navigateur : elle affiche `"status":"updated"`
+si un nouveau message a été trouvé et pris en compte, ou `"status":"no_change"`
+si rien de nouveau.
+
+### Méthode avancée (alternative, non recommandée)
+
+`slack-events.php` existe aussi dans ce dépôt pour une actualisation en temps
+réel (dès la seconde où le message est posté, via l'Events API de Slack), mais
+demande de configurer une URL vérifiée par Slack en plus — plus de manipulation
+pour un gain minime ici. À réserver à un usage avancé si besoin.
 
 ## Configurer la notification Slack sortante (optionnel)
 
