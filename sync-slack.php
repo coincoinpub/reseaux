@@ -32,7 +32,7 @@ if ($cronSecret) {
 
 $ch = curl_init('https://slack.com/api/conversations.history?' . http_build_query([
     'channel' => $channelId,
-    'limit' => 1,
+    'limit' => 15,
 ]));
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
@@ -49,8 +49,8 @@ if (!($response['ok'] ?? false)) {
     exit;
 }
 
-$message = $response['messages'][0] ?? null;
-if (!$message) {
+$messages = $response['messages'] ?? [];
+if (empty($messages)) {
     echo json_encode(['status' => 'no_message']);
     exit;
 }
@@ -58,17 +58,32 @@ if (!$message) {
 $existing = file_exists($dataFile) ? json_decode(file_get_contents($dataFile), true) : null;
 $lastTs = $existing['sourceMessageTs'] ?? null;
 
-if ($lastTs && $lastTs === $message['ts']) {
-    echo json_encode(['status' => 'no_change', 'lastMessageTs' => $lastTs]);
+// conversations.history renvoie les messages du plus récent au plus ancien,
+// y compris les notifications système ("a rejoint le canal", etc.) : on
+// ignore ces messages-là et on prend le premier vrai message hebdo trouvé.
+$message = null;
+$parsedPosts = [];
+$videoBonus = null;
+foreach ($messages as $candidate) {
+    if (!empty($candidate['subtype'])) {
+        continue; // messages système (join, edit, etc.)
+    }
+    $candidatePosts = parse_weekly_message($candidate['text'] ?? '');
+    if (!empty($candidatePosts)) {
+        $message = $candidate;
+        $parsedPosts = $candidatePosts;
+        $videoBonus = extract_video_bonus($candidate['text'] ?? '');
+        break;
+    }
+}
+
+if (!$message) {
+    echo json_encode(['status' => 'no_posts_found', 'checked' => count($messages)]);
     exit;
 }
 
-$text = $message['text'] ?? '';
-$parsedPosts = parse_weekly_message($text);
-$videoBonus = extract_video_bonus($text);
-
-if (empty($parsedPosts)) {
-    echo json_encode(['status' => 'no_posts_found', 'messageTs' => $message['ts']]);
+if ($lastTs && $lastTs === $message['ts']) {
+    echo json_encode(['status' => 'no_change', 'lastMessageTs' => $lastTs]);
     exit;
 }
 
