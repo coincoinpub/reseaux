@@ -155,6 +155,28 @@ main{ max-width:1160px; margin:0 auto; padding:2.5rem 6vw 5rem; }
 .btn-reject{ border-color:var(--red); color:var(--red); }
 .btn-reject.active, .btn-reject:hover{ background:var(--red); color:var(--noir); border-color:var(--red); }
 
+/* ---------- VIDEO SECTION ---------- */
+.video-section{
+  margin-top:3rem; padding-top:2.5rem; border-top:1px solid var(--line);
+}
+.video-head{
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  flex-wrap:wrap; margin-bottom:.4rem;
+}
+.video-head h2{ margin:0; font-size:1.3rem; font-weight:800; }
+.video-grid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+  gap:1.5rem; margin-top:1.5rem;
+}
+.video-block{
+  background:var(--noir-2); border:1px solid var(--line); border-top:3px solid var(--violet);
+  border-radius:16px; padding:1.1rem 1.2rem;
+  display:flex; flex-direction:column; gap:.6rem;
+}
+.video-block-head{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+.video-block-head h3{ margin:0; font-size:.95rem; font-weight:700; }
+.video-box{ min-height:160px; }
+
 /* ---------- FOOTER ---------- */
 footer{
   padding:2rem 6vw; border-top:1px solid var(--line);

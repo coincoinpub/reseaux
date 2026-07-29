@@ -76,6 +76,25 @@ if ($action === 'update-post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+if ($action === 'update-video' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $body = read_json_body();
+    $data = read_data($dataFile);
+    $video = $data['video'] ?? ['script' => '', 'prompt' => '', 'updatedAt' => null];
+
+    if (isset($body['script']) && is_string($body['script'])) {
+        $video['script'] = $body['script'];
+    }
+    if (isset($body['prompt']) && is_string($body['prompt'])) {
+        $video['prompt'] = $body['prompt'];
+    }
+    $video['updatedAt'] = gmdate('c');
+    $data['video'] = $video;
+
+    write_data($dataFile, $data);
+    echo json_encode($video);
+    exit;
+}
+
 if ($action === 'notify-slack' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($config['slack_webhook_url'])) {
         http_response_code(400);

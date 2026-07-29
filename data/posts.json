@@ -57,5 +57,10 @@
       "thumbnailUrl": "",
       "updatedAt": null
     }
-  ]
+  ],
+  "video": {
+    "script": "À Bergerac, il y a une agence qui ne fait jamais les choses à moitié, même quand elle a un bec.\nCoin Coin Publicité et Communication : web, print, enseigne, textile, tout ce qu'il faut pour que votre com sorte du lot.\nUne idée. Un canard. Un résultat.\ncoin-coin.fr",
+    "prompt": "Vidéo verticale 9:16, 15 secondes, motion design coloré et énergique. Palette Coin Coin : fond noir violet profond (#140d1c), accents orange vif (#ec6527), touches jaune (#fbc117) et violet (#672290). Le logo canard Coin Coin (tête noire, bec orange, étoile blanche) apparaît en stop-motion espiègle, clin d'oeil puis rebond, pour révéler successivement les mots WEB, PRINT, ENSEIGNE, TEXTILE en typographie Poppins bold blanche sur fond noir, rythmés par des formes géométriques orange. Cuts rapides synchronisés sur une musique pop électro entraînante (tempo environ 120 bpm, type Suno). Dernier plan : logo complet COIN COIN.FR avec la tagline Publicité et communication et le texte \"On s'occupe de tout, vous gardez le sourire.\" Ton fun, décalé, jamais criard, toujours pro.",
+    "updatedAt": null
+  }
 }

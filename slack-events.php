@@ -62,6 +62,7 @@ if ($sourceChannel && ($event['channel'] ?? '') !== $sourceChannel) {
 
 $text = $event['text'] ?? '';
 $parsedPosts = parse_weekly_message($text);
+$videoBonus = extract_video_bonus($text);
 
 if (empty($parsedPosts)) {
     exit;
@@ -72,7 +73,7 @@ foreach ($parsedPosts as &$p) {
 }
 unset($p);
 
-save_new_week($dataFile, $parsedPosts);
+save_new_week($dataFile, $parsedPosts, $videoBonus);
 exit;
 
 // ---------------------------------------------------------------------
@@ -107,7 +108,7 @@ function parse_weekly_message($rawText) {
         '/\n\s*[_*]*Bonus/i',
         '/\n\s*[_*]*Texte\s*\+\s*prompt/i',
         '/\n\s*[_*]*Script\s*\(/i',
-        '/\n\s*[_*]*Prompt\s*g[ée]n[ée]ration/i',
+        '/\n\s*[_*]*Prompt\s*g[ée]n[ée]ration/iu',
         '/\n\s*Dossier complet/i',
         '/\n\s*Sources\s+actu/i',
         '/\n\s*_?Sent using_?/i',
@@ -167,6 +168,36 @@ function parse_weekly_message($rawText) {
     return array_values($posts);
 }
 
+// Extrait le "bonus vidéo" du message (script + prompt de génération), quand
+// présent. Tolérant : ce bloc n'a pas toujours le même intitulé d'une
+// semaine à l'autre ("Bonus - idée vidéo" / "Texte + prompt pour la future
+// vidéo promo"...).
+function extract_video_bonus($rawText) {
+    $text = slack_unescape($rawText);
+
+    if (!preg_match('/\n\s*[_*]*(?:Bonus|Texte\s*\+\s*prompt)[^\n]*\n(.*)$/is', $text, $m)) {
+        return null;
+    }
+    $section = $m[1];
+
+    $script = '';
+    $prompt = '';
+
+    if (preg_match('/(?:Script[^\n]*|Texte)\s*:?\s*\n?(.*?)(?=\n\s*[_*]*Prompt\s*(?:de\s*|g[ée]n[ée]ration)|$)/isu', $section, $sm)) {
+        $script = clean_caption_text($sm[1]);
+    }
+    if (preg_match('/Prompt\s*(?:de\s*)?g[ée]n[ée]ration[^\n:]*:?\s*\n?(.*)$/isu', $section, $pm)) {
+        $prompt = clean_caption_text($pm[1]);
+        $prompt = preg_split('/\n\s*(Dossier complet|Sources\s+actu|Sent using)/i', $prompt)[0];
+        $prompt = trim($prompt);
+    }
+
+    if ($script === '' && $prompt === '') {
+        return null;
+    }
+    return ['script' => $script, 'prompt' => $prompt];
+}
+
 function fetch_og_image($url) {
     if (!function_exists('curl_init')) {
         return null;
@@ -194,7 +225,7 @@ function fetch_og_image($url) {
     return null;
 }
 
-function save_new_week($dataFile, $parsedPosts) {
+function save_new_week($dataFile, $parsedPosts, $videoBonus) {
     $posts = [];
     $i = 1;
     foreach ($parsedPosts as $p) {
@@ -215,6 +246,12 @@ function save_new_week($dataFile, $parsedPosts) {
         $i++;
     }
 
-    $data = ['weekOf' => date('Y-m-d'), 'posts' => $posts];
+    // Si aucun bonus vidéo n'est trouvé cette semaine, on garde celui déjà
+    // enregistré plutôt que de l'effacer.
+    $existing = file_exists($dataFile) ? json_decode(file_get_contents($dataFile), true) : null;
+    $video = $videoBonus ?: ($existing['video'] ?? ['script' => '', 'prompt' => '']);
+    $video['updatedAt'] = gmdate('c');
+
+    $data = ['weekOf' => date('Y-m-d'), 'posts' => $posts, 'video' => $video];
     file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }

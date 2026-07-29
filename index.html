@@ -38,6 +38,35 @@
   <div id="posts" class="posts-grid">
     <!-- rempli en JS -->
   </div>
+
+  <section class="video-section">
+    <div class="video-head">
+      <h2>🎬 Vidéo du jour</h2>
+      <a class="btn btn-primary" href="https://firefly.adobe.com/generate/video" target="_blank" rel="noopener">
+        Générer avec Adobe Firefly →
+      </a>
+    </div>
+    <p class="intro">
+      Script et prompt de génération pour la vidéo du jour. Copie le prompt
+      dans Adobe Firefly (lien ci-dessus) pour générer la vidéo.
+    </p>
+    <div class="video-grid">
+      <div class="video-block">
+        <div class="video-block-head">
+          <h3>Script (voix off / texte)</h3>
+          <button class="btn copy-btn" data-copy-target="video-script">📋 Copier</button>
+        </div>
+        <textarea id="video-script" class="caption-box video-box" placeholder="Script de la vidéo…"></textarea>
+      </div>
+      <div class="video-block">
+        <div class="video-block-head">
+          <h3>Prompt génération vidéo</h3>
+          <button class="btn copy-btn" data-copy-target="video-prompt">📋 Copier</button>
+        </div>
+        <textarea id="video-prompt" class="caption-box video-box" placeholder="Prompt pour Adobe Firefly…"></textarea>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>

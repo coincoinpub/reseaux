@@ -33,6 +33,7 @@ async function fetchPosts() {
   state = await res.json();
   weekLabel.textContent = formatWeek(state.weekOf);
   render();
+  renderVideo();
 }
 
 async function updatePost(id, patch) {
@@ -172,6 +173,43 @@ function render() {
   postsGrid.innerHTML = '';
   state.posts.forEach((post) => postsGrid.appendChild(renderCard(post)));
   updateProgress();
+}
+
+function renderVideo() {
+  const video = state.video || { script: '', prompt: '' };
+  const scriptBox = document.getElementById('video-script');
+  const promptBox = document.getElementById('video-prompt');
+  scriptBox.value = video.script || '';
+  promptBox.value = video.prompt || '';
+
+  const saveScript = debounce((value) => updateVideo({ script: value }), 600);
+  scriptBox.addEventListener('input', (e) => saveScript(e.target.value));
+
+  const savePrompt = debounce((value) => updateVideo({ prompt: value }), 600);
+  promptBox.addEventListener('input', (e) => savePrompt(e.target.value));
+
+  document.querySelectorAll('[data-copy-target]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const target = document.getElementById(btn.dataset.copyTarget);
+      await navigator.clipboard.writeText(target.value);
+      showToast('Copié !');
+    });
+  });
+}
+
+async function updateVideo(patch) {
+  const res = await fetch('api.php?action=update-video', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    showToast('Erreur de sauvegarde');
+    return null;
+  }
+  const updated = await res.json();
+  state.video = updated;
+  return updated;
 }
 
 notifyBtn.addEventListener('click', async () => {
