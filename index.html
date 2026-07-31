@@ -16,16 +16,20 @@
 <header class="topbar">
   <a href="/" class="brand" aria-label="Retour à coin-coin.fr">
     <img src="logo.svg" alt="" class="brand-logo" width="44" height="44" />
-    <div>
-      <h1>Coin Coin <span class="hl">Réseaux</span></h1>
-      <p id="week-label" class="subtitle mono">Chargement de la semaine…</p>
-    </div>
+    <h1>Coin Coin <span class="hl">Réseaux</span></h1>
   </a>
   <div class="topbar-actions">
     <span id="progress-label" class="progress-label mono"></span>
     <button id="notify-slack" class="btn btn-primary">Envoyer le résumé sur Slack</button>
   </div>
 </header>
+
+<div class="week-nav">
+  <button id="week-prev" class="week-nav-btn" type="button" aria-label="Semaine précédente">←</button>
+  <span id="week-label" class="week-nav-label mono">Chargement de la semaine…</span>
+  <button id="week-next" class="week-nav-btn" type="button" aria-label="Semaine suivante">→</button>
+  <span id="readonly-badge" class="readonly-badge" hidden>📁 Archive — lecture seule</span>
+</div>
 
 <main>
   <p class="intro">

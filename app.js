@@ -1,5 +1,8 @@
 const postsGrid = document.getElementById('posts');
 const weekLabel = document.getElementById('week-label');
+const weekPrevBtn = document.getElementById('week-prev');
+const weekNextBtn = document.getElementById('week-next');
+const readonlyBadge = document.getElementById('readonly-badge');
 const progressLabel = document.getElementById('progress-label');
 const toast = document.getElementById('toast');
 const notifyBtn = document.getElementById('notify-slack');
@@ -7,7 +10,9 @@ const notifyBtn = document.getElementById('notify-slack');
 const PLATFORM_LABELS = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' };
 const STATUS_LABELS = { pending: 'À valider', approved: 'Validé', rejected: 'Refusé' };
 
-let state = { weekOf: null, posts: [] };
+let state = { weekOf: null, posts: [], readOnly: false };
+let weeksList = []; // du plus récent au plus ancien
+let weekIndex = 0;
 
 function showToast(message) {
   toast.textContent = message;
@@ -25,15 +30,41 @@ function formatWeek(dateStr) {
 function updateProgress() {
   const total = state.posts.length;
   const done = state.posts.filter((p) => p.status !== 'pending').length;
-  progressLabel.textContent = `${done}/${total} traités`;
+  progressLabel.textContent = total ? `${done}/${total} traités` : '';
 }
 
-async function fetchPosts() {
-  const res = await fetch('api.php?action=posts');
+async function fetchWeeksList() {
+  try {
+    const res = await fetch('api.php?action=weeks');
+    const data = await res.json();
+    weeksList = data.weeks || [];
+  } catch {
+    weeksList = [];
+  }
+}
+
+async function loadWeek(index) {
+  weekIndex = Math.max(0, Math.min(index, weeksList.length - 1));
+  const week = weeksList[weekIndex];
+  const url = weekIndex === 0 ? 'api.php?action=posts' : `api.php?action=posts&week=${encodeURIComponent(week)}`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    showToast('Semaine introuvable');
+    return;
+  }
   state = await res.json();
-  weekLabel.textContent = formatWeek(state.weekOf);
   render();
   renderVideo();
+  updateWeekNav();
+}
+
+function updateWeekNav() {
+  weekLabel.textContent = formatWeek(state.weekOf);
+  weekPrevBtn.disabled = weekIndex >= weeksList.length - 1;
+  weekNextBtn.disabled = weekIndex <= 0;
+  readonlyBadge.hidden = !state.readOnly;
+  notifyBtn.hidden = !!state.readOnly;
 }
 
 async function updatePost(id, patch) {
@@ -67,38 +98,41 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function renderCard(post) {
+function renderCard(post, readOnly) {
   const card = document.createElement('article');
-  card.className = 'card';
+  card.className = 'card' + (readOnly ? ' read-only' : '');
   card.dataset.id = post.id;
 
   const mediaBlock = post.thumbnailUrl
     ? `<div class="card-media"><img src="${escapeHtml(post.thumbnailUrl)}" alt="Visuel : ${escapeHtml(post.title)}" loading="lazy" /></div>`
     : '';
 
+  const ro = readOnly ? 'readonly' : '';
+  const roDisabled = readOnly ? 'disabled' : '';
+
   card.innerHTML = `
     ${mediaBlock}
     <div class="card-body">
       <div class="title-row">
-        <input class="category-input" data-field="category" value="${escapeHtml(post.category)}" placeholder="Catégorie" />
+        <input class="category-input" data-field="category" value="${escapeHtml(post.category)}" placeholder="Catégorie" ${ro} />
       </div>
-      <input class="title-input" data-field="title" value="${escapeHtml(post.title)}" placeholder="Titre du post" />
+      <input class="title-input" data-field="title" value="${escapeHtml(post.title)}" placeholder="Titre du post" ${ro} />
 
-      <textarea class="caption-box" data-field="caption">${escapeHtml(post.caption)}</textarea>
+      <textarea class="caption-box" data-field="caption" ${ro}>${escapeHtml(post.caption)}</textarea>
 
       <div class="platforms">
         ${Object.entries(PLATFORM_LABELS)
           .map(
             ([key, label]) => `
           <label>
-            <input type="checkbox" data-platform="${key}" ${post.platforms[key] ? 'checked' : ''} />
+            <input type="checkbox" data-platform="${key}" ${post.platforms[key] ? 'checked' : ''} ${roDisabled} />
             ${label}
           </label>`
           )
           .join('')}
       </div>
 
-      <input class="note-box" type="text" data-field="note" placeholder="Note interne (optionnel)" value="${escapeHtml(post.note || '')}" />
+      <input class="note-box" type="text" data-field="note" placeholder="Note interne (optionnel)" value="${escapeHtml(post.note || '')}" ${ro} />
 
       <div class="actions-row">
         <a class="btn" href="${escapeHtml(post.canvaViewUrl)}" target="_blank" rel="noopener">⬇️ Télécharger le visuel (Canva)</a>
@@ -107,10 +141,14 @@ function renderCard(post) {
 
       <div class="status-row">
         <span class="status-pill status-${post.status}">${STATUS_LABELS[post.status]}</span>
-        <div class="validate-actions">
+        ${
+          readOnly
+            ? ''
+            : `<div class="validate-actions">
           <button class="btn btn-approve ${post.status === 'approved' ? 'active' : ''}" data-status="approved">✓ Valider</button>
           <button class="btn btn-reject ${post.status === 'rejected' ? 'active' : ''}" data-status="rejected">✕ Refuser</button>
-        </div>
+        </div>`
+        }
       </div>
     </div>
   `;
@@ -119,6 +157,16 @@ function renderCard(post) {
   const img = media ? media.querySelector('img') : null;
   // Lien Canva expiré : on retire la carte média plutôt que d'afficher une icône cassée.
   if (img) img.addEventListener('error', () => media.remove());
+
+  card.querySelector('.copy-btn').addEventListener('click', async () => {
+    const textarea = card.querySelector('.caption-box');
+    await navigator.clipboard.writeText(textarea.value);
+    showToast('Texte copié !');
+  });
+
+  if (readOnly) {
+    return card;
+  }
 
   const saveTitle = debounce((value) => updatePost(post.id, { title: value }), 600);
   card.querySelector('.title-input').addEventListener('input', (e) => saveTitle(e.target.value));
@@ -138,12 +186,6 @@ function renderCard(post) {
     });
   });
 
-  card.querySelector('.copy-btn').addEventListener('click', async () => {
-    const textarea = card.querySelector('.caption-box');
-    await navigator.clipboard.writeText(textarea.value);
-    showToast('Texte copié !');
-  });
-
   card.querySelectorAll('[data-status]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       // Cliquer sur un statut déjà actif le remet "à valider"
@@ -160,13 +202,13 @@ function refreshCardStatus(card, post) {
   const pill = card.querySelector('.status-pill');
   pill.className = `status-pill status-${post.status}`;
   pill.textContent = STATUS_LABELS[post.status];
-  card.querySelector('[data-status="approved"]').classList.toggle('active', post.status === 'approved');
-  card.querySelector('[data-status="rejected"]').classList.toggle('active', post.status === 'rejected');
+  card.querySelector('[data-status="approved"]')?.classList.toggle('active', post.status === 'approved');
+  card.querySelector('[data-status="rejected"]')?.classList.toggle('active', post.status === 'rejected');
 }
 
 function render() {
   postsGrid.innerHTML = '';
-  state.posts.forEach((post) => postsGrid.appendChild(renderCard(post)));
+  state.posts.forEach((post) => postsGrid.appendChild(renderCard(post, !!state.readOnly)));
   updateProgress();
 }
 
@@ -176,13 +218,27 @@ function renderVideo() {
   const promptBox = document.getElementById('video-prompt');
   scriptBox.value = video.script || '';
   promptBox.value = video.prompt || '';
+  scriptBox.readOnly = !!state.readOnly;
+  promptBox.readOnly = !!state.readOnly;
 
-  const saveScript = debounce((value) => updateVideo({ script: value }), 600);
-  scriptBox.addEventListener('input', (e) => saveScript(e.target.value));
+  // On enlève d'anciens listeners éventuels en clonant les nœuds, pour éviter
+  // d'empiler des handlers à chaque changement de semaine.
+  const freshScriptBox = scriptBox.cloneNode(true);
+  scriptBox.replaceWith(freshScriptBox);
+  const freshPromptBox = promptBox.cloneNode(true);
+  promptBox.replaceWith(freshPromptBox);
 
-  const savePrompt = debounce((value) => updateVideo({ prompt: value }), 600);
-  promptBox.addEventListener('input', (e) => savePrompt(e.target.value));
+  if (!state.readOnly) {
+    const saveScript = debounce((value) => updateVideo({ script: value }), 600);
+    freshScriptBox.addEventListener('input', (e) => saveScript(e.target.value));
 
+    const savePrompt = debounce((value) => updateVideo({ prompt: value }), 600);
+    freshPromptBox.addEventListener('input', (e) => savePrompt(e.target.value));
+  }
+
+  document.querySelectorAll('[data-copy-target]').forEach((btn) => {
+    btn.replaceWith(btn.cloneNode(true));
+  });
   document.querySelectorAll('[data-copy-target]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const target = document.getElementById(btn.dataset.copyTarget);
@@ -206,6 +262,9 @@ async function updateVideo(patch) {
   state.video = updated;
   return updated;
 }
+
+weekPrevBtn.addEventListener('click', () => loadWeek(weekIndex + 1));
+weekNextBtn.addEventListener('click', () => loadWeek(weekIndex - 1));
 
 notifyBtn.addEventListener('click', async () => {
   const lines = state.posts.map((p) => {
@@ -234,4 +293,13 @@ notifyBtn.addEventListener('click', async () => {
   }
 });
 
-fetchPosts();
+async function init() {
+  await fetchWeeksList();
+  if (weeksList.length === 0) {
+    // Filet de sécurité : si l'API "weeks" échoue, on affiche quand même la semaine en cours.
+    weeksList = [null];
+  }
+  await loadWeek(0);
+}
+
+init();

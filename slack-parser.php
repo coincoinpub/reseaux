@@ -177,11 +177,40 @@ function save_new_week($dataFile, $parsedPosts, $videoBonus, $sourceMessageTs = 
     $video = $videoBonus ?: ($existing['video'] ?? ['script' => '', 'prompt' => '']);
     $video['updatedAt'] = gmdate('c');
 
+    $newWeekOf = date('Y-m-d');
+
+    // On archive l'ancienne semaine avant de la remplacer, pour garder un
+    // historique consultable (voir archive_week).
+    if ($existing && !empty($existing['posts']) && ($existing['weekOf'] ?? null) !== $newWeekOf) {
+        archive_week($dataFile, $existing);
+    }
+
     $data = [
-        'weekOf' => date('Y-m-d'),
+        'weekOf' => $newWeekOf,
         'posts' => $posts,
         'video' => $video,
         'sourceMessageTs' => $sourceMessageTs ?? ($existing['sourceMessageTs'] ?? null),
     ];
     file_put_contents($dataFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+}
+
+// Conserve un instantané en lecture seule de la semaine remplacée, et ne
+// garde que les 4 plus récentes archives (les plus anciennes sont supprimées).
+function archive_week($dataFile, $weekData) {
+    $archiveDir = dirname($dataFile) . '/archive';
+    if (!is_dir($archiveDir)) {
+        mkdir($archiveDir, 0755, true);
+    }
+
+    $weekOf = $weekData['weekOf'] ?? date('Y-m-d');
+    $archiveFile = $archiveDir . '/' . $weekOf . '.json';
+    file_put_contents($archiveFile, json_encode($weekData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+    $files = glob($archiveDir . '/*.json');
+    if ($files) {
+        rsort($files); // noms de fichiers = dates AAAA-MM-JJ -> tri décroissant = plus récent d'abord
+        foreach (array_slice($files, 4) as $old) {
+            unlink($old);
+        }
+    }
 }

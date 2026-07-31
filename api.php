@@ -19,10 +19,49 @@ function read_json_body() {
     return is_array($decoded) ? $decoded : [];
 }
 
+$archiveDir = __DIR__ . '/data/archive';
+
 $action = $_GET['action'] ?? '';
 
 if ($action === 'posts' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    echo json_encode(read_data($dataFile));
+    $current = read_data($dataFile);
+    $week = $_GET['week'] ?? null;
+
+    if ($week && $week !== ($current['weekOf'] ?? null)) {
+        // basename() empêche toute tentative de sortir du dossier archive/
+        $archiveFile = $archiveDir . '/' . basename($week) . '.json';
+        if (!file_exists($archiveFile)) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Semaine introuvable']);
+            exit;
+        }
+        $data = read_data($archiveFile);
+        $data['readOnly'] = true;
+        echo json_encode($data);
+        exit;
+    }
+
+    if ($current) {
+        $current['readOnly'] = false;
+    }
+    echo json_encode($current);
+    exit;
+}
+
+if ($action === 'weeks' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $current = read_data($dataFile);
+    $weeks = [];
+    if (!empty($current['weekOf'])) {
+        $weeks[] = $current['weekOf'];
+    }
+    if (is_dir($archiveDir)) {
+        foreach (glob($archiveDir . '/*.json') as $file) {
+            $weeks[] = basename($file, '.json');
+        }
+    }
+    $weeks = array_values(array_unique($weeks));
+    rsort($weeks);
+    echo json_encode(['weeks' => $weeks, 'currentWeek' => $current['weekOf'] ?? null]);
     exit;
 }
 

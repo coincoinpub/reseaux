@@ -39,10 +39,30 @@ img{ max-width:100%; display:block; }
 .brand-logo{ width:44px; height:44px; }
 .brand h1{ margin:0; font-size:1.15rem; font-weight:800; letter-spacing:-.01em; }
 .brand h1 .hl{ color:var(--orange); }
-.subtitle{ margin:4px 0 0; color:var(--gris); font-size:.78rem; letter-spacing:.04em; }
-
 .topbar-actions{ display:flex; align-items:center; gap:16px; }
 .progress-label{ font-size:.78rem; color:var(--gris); }
+
+/* ---------- WEEK NAV ---------- */
+.week-nav{
+  display:flex; align-items:center; gap:.6rem;
+  padding:14px 6vw; border-bottom:1px solid var(--line);
+  flex-wrap:wrap;
+}
+.week-nav-btn{
+  width:30px; height:30px; border-radius:50%;
+  border:1px solid var(--line); background:transparent; color:var(--creme);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:.95rem; transition:border-color .2s ease, color .2s ease, opacity .2s ease;
+}
+.week-nav-btn:hover:not(:disabled){ border-color:var(--orange); color:var(--orange); }
+.week-nav-btn:disabled{ opacity:.3; cursor:default; }
+.week-nav-label{ font-size:.82rem; color:var(--gris); min-width:14ch; }
+.readonly-badge{
+  font-size:.72rem; font-weight:600; letter-spacing:.03em;
+  background:rgba(251,193,23,.12); color:var(--jaune);
+  border:1px solid rgba(251,193,23,.25); border-radius:999px;
+  padding:.25rem .65rem; margin-left:.4rem;
+}
 
 /* ---------- LAYOUT ---------- */
 main{ max-width:1160px; margin:0 auto; padding:2.5rem 6vw 5rem; }
@@ -115,6 +135,13 @@ main{ max-width:1160px; margin:0 auto; padding:2.5rem 6vw 5rem; }
   background:transparent;
 }
 .note-box::placeholder{ color:var(--gris); }
+
+.card.read-only .caption-box,
+.card.read-only .title-input,
+.card.read-only .category-input,
+.card.read-only .note-box{ cursor:default; }
+.card.read-only .caption-box{ background:rgba(0,0,0,.1); resize:none; }
+.card.read-only .platforms input[type="checkbox"]{ opacity:.7; }
 
 .actions-row{ display:flex; gap:.55rem; flex-wrap:wrap; }
 
