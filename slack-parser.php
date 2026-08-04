@@ -17,8 +17,15 @@ function clean_caption_text($text) {
     return trim($text);
 }
 
+// Canva a plusieurs formats d'URL de partage selon comment le lien est copié
+// (canva.com/d/XXXX, ou canva.com/design/XXXX/edit, ou /view) : on les
+// reconnaît tous plutôt que de dépendre d'un seul format qui peut changer.
 function extract_canva_links($text) {
-    preg_match_all('/<(https:\/\/(?:www\.)?canva\.com\/d\/[A-Za-z0-9_-]+)(?:\|[^>]*)?>/', $text, $m);
+    preg_match_all(
+        '/<(https:\/\/(?:www\.)?canva\.com\/(?:d\/[A-Za-z0-9_-]+|design\/[A-Za-z0-9_-]+(?:\/[a-z]+)?))(?:\|[^>]*)?>/',
+        $text,
+        $m
+    );
     return $m[1];
 }
 
@@ -71,7 +78,11 @@ function parse_weekly_message($rawText) {
         $body = $headingEnd !== false ? mb_substr($rest, $headingEnd) : '';
         // le lien Canva est déjà affiché séparément (bouton de téléchargement) :
         // on l'enlève du texte plutôt que de le convertir en libellé résiduel.
-        $body = preg_replace('/<https:\/\/(?:www\.)?canva\.com\/d\/[A-Za-z0-9_-]+(?:\|[^>]*)?>/', '', $body);
+        $body = preg_replace(
+            '/<https:\/\/(?:www\.)?canva\.com\/(?:d\/[A-Za-z0-9_-]+|design\/[A-Za-z0-9_-]+(?:\/[a-z]+)?)(?:\|[^>]*)?>/',
+            '',
+            $body
+        );
         $body = clean_caption_text($body);
 
         $category = '';
