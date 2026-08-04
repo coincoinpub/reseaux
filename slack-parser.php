@@ -141,8 +141,8 @@ function fetch_og_image($url) {
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 4,
-        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_TIMEOUT => 3,
+        CURLOPT_CONNECTTIMEOUT => 2,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_MAXREDIRS => 3,
         CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; CoinCoinReseauxBot/1.0)',
@@ -286,8 +286,14 @@ function sync_from_slack($botToken, $channelId, $dataFile) {
         return ['status' => 'no_change', 'lastMessageTs' => $lastTs];
     }
 
+    // Récupération des aperçus best-effort, avec un budget de temps global :
+    // si Canva répond lentement, on n'attend pas indéfiniment (ça bloquerait
+    // toute la synchro et ferait planter la requête côté navigateur/serveur).
+    // Les posts qui n'ont pas eu le temps d'être traités restent sans aperçu
+    // (le lien "Télécharger le visuel" reste toujours valide de toute façon).
+    $thumbnailDeadline = microtime(true) + 8;
     foreach ($parsedPosts as &$p) {
-        $p['thumbnailUrl'] = fetch_og_image($p['link']) ?? '';
+        $p['thumbnailUrl'] = microtime(true) < $thumbnailDeadline ? (fetch_og_image($p['link']) ?? '') : '';
     }
     unset($p);
 

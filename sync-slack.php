@@ -10,6 +10,7 @@
 
 require __DIR__ . '/slack-parser.php';
 
+@set_time_limit(60);
 header('Content-Type: application/json; charset=utf-8');
 
 $configFile = __DIR__ . '/config.php';

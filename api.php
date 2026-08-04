@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/slack-parser.php';
 
+@set_time_limit(60);
 header('Content-Type: application/json; charset=utf-8');
 
 $dataFile = __DIR__ . '/data/posts.json';
