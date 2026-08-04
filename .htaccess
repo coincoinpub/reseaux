@@ -1,0 +1,8 @@
+# Empêche la page et les scripts d'être mis en cache trop longtemps (côté
+# navigateur ou cache serveur type LiteSpeed) : sans ça, un fichier remplacé
+# peut continuer à servir l'ancienne version pendant un moment.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
