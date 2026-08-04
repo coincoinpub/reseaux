@@ -6,6 +6,7 @@ const readonlyBadge = document.getElementById('readonly-badge');
 const progressLabel = document.getElementById('progress-label');
 const toast = document.getElementById('toast');
 const notifyBtn = document.getElementById('notify-slack');
+const refreshBtn = document.getElementById('refresh-btn');
 
 const PLATFORM_LABELS = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' };
 const STATUS_LABELS = { pending: 'À valider', approved: 'Validé', rejected: 'Refusé' };
@@ -65,6 +66,7 @@ function updateWeekNav() {
   weekNextBtn.disabled = weekIndex <= 0;
   readonlyBadge.hidden = !state.readOnly;
   notifyBtn.hidden = !!state.readOnly;
+  refreshBtn.hidden = !!state.readOnly;
 }
 
 async function updatePost(id, patch) {
@@ -290,6 +292,34 @@ notifyBtn.addEventListener('click', async () => {
     showToast(`Slack non configuré : ${err.message}`);
   } finally {
     notifyBtn.disabled = false;
+  }
+});
+
+refreshBtn.addEventListener('click', async () => {
+  refreshBtn.disabled = true;
+  const originalLabel = refreshBtn.textContent;
+  refreshBtn.textContent = '🔄 Actualisation…';
+  try {
+    const res = await fetch('api.php?action=refresh', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur inconnue');
+
+    if (data.status === 'updated') {
+      showToast(`Nouvelle semaine trouvée (${data.postsCount} posts) !`);
+      await fetchWeeksList();
+      await loadWeek(0);
+    } else if (data.status === 'no_change') {
+      showToast('Déjà à jour — rien de nouveau dans Slack.');
+    } else if (data.status === 'no_posts_found') {
+      showToast("Aucun post reconnu dans les derniers messages Slack.");
+    } else {
+      showToast('Aucun message trouvé dans #visuels-hebdo.');
+    }
+  } catch (err) {
+    showToast(`Erreur : ${err.message}`);
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = originalLabel;
   }
 });
 

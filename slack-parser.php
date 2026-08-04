@@ -225,3 +225,73 @@ function archive_week($dataFile, $weekData) {
         }
     }
 }
+
+// Va chercher le dernier message pertinent de #visuels-hebdo et met à jour
+// data/posts.json si c'est nouveau. Utilisée par sync-slack.php (cron) et par
+// le bouton "Actualiser" de la page (api.php?action=refresh).
+function sync_from_slack($botToken, $channelId, $dataFile) {
+    if (!$botToken || !$channelId) {
+        return ['error' => 'slack_bot_token / slack_source_channel_id manquant dans config.php'];
+    }
+
+    $ch = curl_init('https://slack.com/api/conversations.history?' . http_build_query([
+        'channel' => $channelId,
+        'limit' => 15,
+    ]));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $botToken],
+    ]);
+    $raw = curl_exec($ch);
+    curl_close($ch);
+
+    $response = json_decode($raw, true);
+    if (!($response['ok'] ?? false)) {
+        return ['error' => 'Slack API : ' . ($response['error'] ?? 'réponse invalide')];
+    }
+
+    $messages = $response['messages'] ?? [];
+    if (empty($messages)) {
+        return ['status' => 'no_message'];
+    }
+
+    $existing = file_exists($dataFile) ? json_decode(file_get_contents($dataFile), true) : null;
+    $lastTs = $existing['sourceMessageTs'] ?? null;
+
+    // conversations.history renvoie les messages du plus récent au plus ancien,
+    // y compris les notifications système ("a rejoint le canal", etc.) : on
+    // ignore ces messages-là et on prend le premier vrai message hebdo trouvé.
+    $message = null;
+    $parsedPosts = [];
+    $videoBonus = null;
+    foreach ($messages as $candidate) {
+        if (!empty($candidate['subtype'])) {
+            continue;
+        }
+        $candidatePosts = parse_weekly_message($candidate['text'] ?? '');
+        if (!empty($candidatePosts)) {
+            $message = $candidate;
+            $parsedPosts = $candidatePosts;
+            $videoBonus = extract_video_bonus($candidate['text'] ?? '');
+            break;
+        }
+    }
+
+    if (!$message) {
+        return ['status' => 'no_posts_found', 'checked' => count($messages)];
+    }
+
+    if ($lastTs && $lastTs === $message['ts']) {
+        return ['status' => 'no_change', 'lastMessageTs' => $lastTs];
+    }
+
+    foreach ($parsedPosts as &$p) {
+        $p['thumbnailUrl'] = fetch_og_image($p['link']) ?? '';
+    }
+    unset($p);
+
+    save_new_week($dataFile, $parsedPosts, $videoBonus, $message['ts']);
+
+    return ['status' => 'updated', 'postsCount' => count($parsedPosts), 'messageTs' => $message['ts']];
+}

@@ -1,4 +1,6 @@
 <?php
+require __DIR__ . '/slack-parser.php';
+
 header('Content-Type: application/json; charset=utf-8');
 
 $dataFile = __DIR__ . '/data/posts.json';
@@ -62,6 +64,16 @@ if ($action === 'weeks' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $weeks = array_values(array_unique($weeks));
     rsort($weeks);
     echo json_encode(['weeks' => $weeks, 'currentWeek' => $current['weekOf'] ?? null]);
+    exit;
+}
+
+if ($action === 'refresh' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $result = sync_from_slack($config['slack_bot_token'] ?? '', $config['slack_source_channel_id'] ?? '', $dataFile);
+    if (isset($result['error'])) {
+        $isConfigError = str_contains($result['error'], 'config.php');
+        http_response_code($isConfigError ? 400 : 502);
+    }
+    echo json_encode($result);
     exit;
 }
 
