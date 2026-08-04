@@ -30,7 +30,7 @@ if ($cronSecret) {
 $result = sync_from_slack($config['slack_bot_token'] ?? '', $config['slack_source_channel_id'] ?? '', $dataFile);
 
 if (isset($result['error'])) {
-    $isConfigError = str_contains($result['error'], 'config.php');
+    $isConfigError = strpos($result['error'], 'config.php') !== false;
     http_response_code($isConfigError ? 400 : 502);
 }
 echo json_encode($result);
