@@ -3,6 +3,11 @@
 // en données exploitables par la page. Utilisé par sync-slack.php (méthode
 // recommandée, via cron) et slack-events.php (méthode avancée, webhook temps réel).
 
+// À incrémenter à chaque changement de ce fichier : permet de vérifier via la
+// réponse JSON (champ "_v") quelle version du code tourne réellement en ligne,
+// utile en cas de doute sur un cache serveur qui servirait une ancienne version.
+define('SLACK_PARSER_VERSION', 3);
+
 function slack_unescape($text) {
     return str_replace(['&amp;', '&lt;', '&gt;'], ['&', '<', '>'], $text);
 }

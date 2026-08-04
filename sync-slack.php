@@ -28,6 +28,7 @@ if ($cronSecret) {
 }
 
 $result = sync_from_slack($config['slack_bot_token'] ?? '', $config['slack_source_channel_id'] ?? '', $dataFile);
+$result['_v'] = SLACK_PARSER_VERSION; // pour vérifier facilement quelle version du code tourne
 
 if (isset($result['error'])) {
     $isConfigError = strpos($result['error'], 'config.php') !== false;
