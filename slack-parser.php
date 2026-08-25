@@ -6,7 +6,16 @@
 // À incrémenter à chaque changement de ce fichier : permet de vérifier via la
 // réponse JSON (champ "_v") quelle version du code tourne réellement en ligne,
 // utile en cas de doute sur un cache serveur qui servirait une ancienne version.
-define('SLACK_PARSER_VERSION', 3);
+define('SLACK_PARSER_VERSION', 4);
+
+// Canva a plusieurs formats d'URL de partage selon comment le lien est copié
+// (canva.com/d/XXXX, ou canva.com/design/XXXX/edit, ou /view) : on les
+// reconnaît tous plutôt que de dépendre d'un seul format qui peut changer.
+// Le lien peut aussi ne pas être auto-formaté par Slack (encadré par <...>) :
+// ça arrive selon comment le message est composé/collé, et sans ce filet le
+// message entier n'est pas reconnu comme un post, ce qui bloque toute la
+// synchro sur la dernière semaine reconnue avec succès.
+define('CANVA_LINK_RE', 'https:\/\/(?:www\.)?canva\.com\/(?:d\/[A-Za-z0-9_-]+|design\/[A-Za-z0-9_-]+(?:\/[a-z]+)?)');
 
 function slack_unescape($text) {
     return str_replace(['&amp;', '&lt;', '&gt;'], ['&', '<', '>'], $text);
@@ -17,21 +26,23 @@ function clean_caption_text($text) {
     $text = preg_replace_callback('/<([^>]+)>/', fn($m) => $m[1], $text);
     $text = preg_replace('/^>\s?/m', '', $text);
     $text = preg_replace('/[*_`]/', '', $text);
-    $text = preg_replace('/^\s*(Lien|Titre|Texte)\s*:?\s*/im', '', $text);
+    $text = preg_replace('/^\s*(Lien|Titre|Texte|Post(?:\s+associé)?)\s*:?\s*/im', '', $text);
     $text = preg_replace('/\n{3,}/', "\n\n", $text);
     return trim($text);
 }
 
-// Canva a plusieurs formats d'URL de partage selon comment le lien est copié
-// (canva.com/d/XXXX, ou canva.com/design/XXXX/edit, ou /view) : on les
-// reconnaît tous plutôt que de dépendre d'un seul format qui peut changer.
 function extract_canva_links($text) {
     preg_match_all(
-        '/<(https:\/\/(?:www\.)?canva\.com\/(?:d\/[A-Za-z0-9_-]+|design\/[A-Za-z0-9_-]+(?:\/[a-z]+)?))(?:\|[^>]*)?>/',
+        '/<(' . CANVA_LINK_RE . ')(?:\|[^>]*)?>|(' . CANVA_LINK_RE . ')/',
         $text,
-        $m
+        $m,
+        PREG_SET_ORDER
     );
-    return $m[1];
+    $links = [];
+    foreach ($m as $match) {
+        $links[] = $match[1] !== '' ? $match[1] : $match[2];
+    }
+    return $links;
 }
 
 // Découpe le message hebdo en posts individuels. Tolérant aux variations de
@@ -43,6 +54,7 @@ function parse_weekly_message($rawText) {
 
     $stopMarkers = [
         '/\n\s*[_*]*Bonus/i',
+        '/\n\s*[_*]*Id[ée]e\s+vid[ée]o/iu',
         '/\n\s*[_*]*Texte\s*\+\s*prompt/i',
         '/\n\s*[_*]*Script\s*\(/i',
         '/\n\s*[_*]*Prompt\s*g[ée]n[ée]ration/iu',
@@ -84,7 +96,7 @@ function parse_weekly_message($rawText) {
         // le lien Canva est déjà affiché séparément (bouton de téléchargement) :
         // on l'enlève du texte plutôt que de le convertir en libellé résiduel.
         $body = preg_replace(
-            '/<https:\/\/(?:www\.)?canva\.com\/(?:d\/[A-Za-z0-9_-]+|design\/[A-Za-z0-9_-]+(?:\/[a-z]+)?)(?:\|[^>]*)?>/',
+            '/<' . CANVA_LINK_RE . '(?:\|[^>]*)?>|' . CANVA_LINK_RE . '/',
             '',
             $body
         );
@@ -116,7 +128,7 @@ function parse_weekly_message($rawText) {
 function extract_video_bonus($rawText) {
     $text = slack_unescape($rawText);
 
-    if (!preg_match('/\n\s*[_*]*(?:Bonus|Texte\s*\+\s*prompt)[^\n]*\n(.*)$/is', $text, $m)) {
+    if (!preg_match('/\n\s*[_*]*(?:Bonus|Id[ée]e\s+vid[ée]o|Texte\s*\+\s*prompt)[^\n]*\n(.*)$/isu', $text, $m)) {
         return null;
     }
     $section = $m[1];
@@ -124,12 +136,12 @@ function extract_video_bonus($rawText) {
     $script = '';
     $prompt = '';
 
-    if (preg_match('/(?:Script[^\n]*|Texte)\s*:?\s*\n?(.*?)(?=\n\s*[_*]*Prompt\s*(?:de\s*|g[ée]n[ée]ration)|$)/isu', $section, $sm)) {
+    if (preg_match('/(?:Texte\s*\+\s*script|Script[^\n]*|Texte)\s*:?\s*\n?(.*?)(?=\n\s*[_*]*Prompt\s*(?:de\s*|g[ée]n[ée]ration)|$)/isu', $section, $sm)) {
         $script = clean_caption_text($sm[1]);
     }
     if (preg_match('/Prompt\s*(?:de\s*)?g[ée]n[ée]ration[^\n:]*:?\s*\n?(.*)$/isu', $section, $pm)) {
         $prompt = clean_caption_text($pm[1]);
-        $prompt = preg_split('/\n\s*(Dossier complet|Sources\s+actu|Sent using)/i', $prompt)[0];
+        $prompt = preg_split('/\n\s*(Dossier complet|Sources\s+actu|Sent using|Tout est modifiable)/i', $prompt)[0];
         $prompt = trim($prompt);
     }
 
